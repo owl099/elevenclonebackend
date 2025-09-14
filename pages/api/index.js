@@ -1,3 +1,3 @@
 export default function handler(req, res) {
-  res.status(200).send("Yokouso watashino database e 🚀");
+  res.status(200).json({ message: "Backend is live 🚀" });
 }
