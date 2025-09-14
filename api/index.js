@@ -50,7 +50,7 @@ async function connectToDatabase() {
   }
 }
 
-// --- API Endpoints ---
+// --- API Endpoints ---  adding comment to push
 
 // Root endpoint: a simple GET request to check if the API is running
 app.get("/", (req, res) => {
