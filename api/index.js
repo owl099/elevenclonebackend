@@ -1,7 +1,7 @@
 // api/index.js
 
 // Load environment variables from a .env file
- api/index.js
+//  api/index.js
 require('dotenv').config();
 const express = require('express');
 const { MongoClient } = require('mongodb');
