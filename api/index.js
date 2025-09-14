@@ -1,15 +1,16 @@
 // api/index.js
 
 // Load environment variables from a .env file
+/ api/index.js
 require('dotenv').config();
-
-// Import the necessary libraries
 const express = require('express');
 const { MongoClient } = require('mongodb');
+const cors = require('cors'); // <--- Add this line
 
 // --- Configuration ---
-// Create an Express application
 const app = express();
+app.use(cors()); // <--- Add this line to use CORS middleware
+
 
 // Retrieve environment variables
 const MONGO_URL = process.env.MONGO_URL;
