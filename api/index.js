@@ -72,7 +72,7 @@ app.get('/api/audio', async (req, res) => {
     const audioCollection = database.collection(COLLECTION_NAME);
 
     // Find a document where the language matches the query
-    const audioFile = await audioCollection.findOne({ language: lang.toLowerCase() });
+    const audioFile = await audioCollection.findOne({ lang: lang.toLowerCase() });
 
     // Handle different response scenarios
     if (audioFile) {
