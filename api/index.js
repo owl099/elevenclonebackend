@@ -1,94 +1,96 @@
 // api/index.js
-
-// Load environment variables from a .env file
-//  api/index.js
 require('dotenv').config();
 const express = require('express');
 const { MongoClient } = require('mongodb');
-const cors = require('cors'); // <--- Add this line
+const cors = require('cors');
 
-// --- Configuration ---
 const app = express();
-app.use(cors()); // <--- Add this line to use CORS middleware
+app.use(cors());
+app.use(express.json());
 
-
-// Retrieve environment variables
+// --- Config ---
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = "audiofiles";
 const COLLECTION_NAME = "voices";
 
-// Check if the MongoDB URL is configured
 if (!MONGO_URL) {
-  console.error("MONGO_URL environment variable is not set. Please add it to your Vercel project's environment variables.");
+  console.error("⚠️  MONGO_URL environment variable is NOT set.");
 }
 
-// Global variables to cache the database connection across multiple requests
+// --- DB caching ---
 let client;
 let db;
-
-// --- Database Connection Function with Caching ---
-// This function connects to MongoDB. It returns a cached connection if one already exists.
 async function connectToDatabase() {
-  // If a connection is already established, return the existing database object
   if (db) {
-    console.log("Using cached database connection.");
+    // cached
     return db;
   }
-
-  // If no connection exists, create a new one
+  if (!MONGO_URL) throw new Error("MONGO_URL not configured");
   try {
     client = new MongoClient(MONGO_URL);
     await client.connect();
-    console.log("Successfully connected to MongoDB!");
-    // Store the database object for future use
     db = client.db(DB_NAME);
+    console.log("✅ Connected to MongoDB (cached).");
     return db;
-  } catch (error) {
-    console.error("Failed to connect to MongoDB:", error);
- 
-    throw error;
+  } catch (err) {
+    console.error("❌ Failed to connect to MongoDB:", err.message);
+    throw err;
   }
 }
 
-// --- API Endpoints ---  adding comment to push
+// --- Simple root / health ---
+app.get('/', (req, res) => res.send('Welcome to the Audio API 🚀'));
 
-// Root endpoint: a simple GET request to check if the API is running
-app.get("/", (req, res) => {
-  res.send("Welcome to the Audio API 🚀");
-});
-
-// Audio endpoint: fetches audio file URL based on a language query parameter
+// --- Get audio by language (accepts ?lang= or ?language=) ---
 app.get('/api/audio', async (req, res) => {
-  const lang = req.query.lang;
+  const raw = (req.query.lang || req.query.language || "").toString().trim();
+  const queryLang = raw.toLowerCase();
 
-  // Validate the request: ensure the 'lang' parameter is provided
-  if (!lang) {
-    return res.status(400).json({ error: "Language parameter is required. Example: /api/audio?lang=english" });
+  if (!queryLang) {
+    return res.status(400).json({
+      error: "Language parameter is required. Example: /api/audio?lang=english or ?language=english"
+    });
   }
 
   try {
-    // Get the database instance using the cached connection
     const database = await connectToDatabase();
     const audioCollection = database.collection(COLLECTION_NAME);
 
-    // Find a document where the language matches the query
-    const audioFile = await audioCollection.findOne({ lang: lang.toLowerCase() });
+    console.log("Searching for language:", queryLang);
+    const audioFile = await audioCollection.findOne({ language: queryLang });
 
-    // Handle different response scenarios
+    console.log("DB result:", !!audioFile);
     if (audioFile) {
-      // If a file is found, send a successful response with the URL
-      res.status(200).json({ url: audioFile.url });
+      return res.status(200).json({ url: audioFile.url });
     } else {
-      // If no file is found for the given language, send a 404 Not Found response
-      res.status(404).json({ error: "Audio file not found for this language." });
+      return res.status(404).json({ error: "Audio file not found for this language." });
     }
   } catch (error) {
-    // Catch any connection or database query errors
-    console.error("Error fetching audio:", error);
+    console.error("Error fetching audio:", error && error.message ? error.message : error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// --- Optional: list available languages (frontend can call this to populate UI) ---
+app.get('/api/languages', async (req, res) => {
+  try {
+    const database = await connectToDatabase();
+    const audioCollection = database.collection(COLLECTION_NAME);
+    const languages = await audioCollection.distinct('language');
+    res.status(200).json({ languages });
+  } catch (err) {
+    console.error("Error listing languages:", err.message || err);
     res.status(500).json({ error: "Internal server error." });
   }
 });
 
-// --- Export the Express App ---
-// This is required for Vercel to recognize your application as a serverless function
+// Export app for Vercel. Also allow local running.
 module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running locally on http://localhost:${PORT}`);
+    console.log("MONGO_URL configured?", !!MONGO_URL);
+  });
+}
