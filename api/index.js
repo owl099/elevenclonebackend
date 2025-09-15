@@ -58,7 +58,7 @@ app.get("/", (req, res) => {
 });
 
 // Audio endpoint: fetches audio file URL based on a language query parameter
-app.get('/api/audio', async (req, res) => {
+app.get('api/audio', async (req, res) => {
   const lang = req.query.lang;
 
   // Validate the request: ensure the 'lang' parameter is provided
